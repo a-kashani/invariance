@@ -1,0 +1,787 @@
+\section{Benchmark Problems}
+\label{sec:benchmarks}
+
+In this section, we introduce a set of benchmark problems designed to validate data-driven algorithms for synthesizing or certifying \ac{capi} sets. We begin by outlining the key features that make benchmarks effective for stress-testing such algorithms. Then, we present $15$ benchmark problems that embody these characteristics. Finally, we describe the metrics used to evaluate the performance of data-driven algorithms on each benchmark.
+
+% \noindent\begin{table*}[t]
+% \centering
+% \begin{tabular}{r|ccccccc}
+% Benchmark     & Nonlinear & Non-Convex & \multicolumn{1}{p{0.1\textwidth}}{State \newline Dimension} & \multicolumn{1}{p{0.11\textwidth}}{Equilibrium on Boundary} & \multicolumn{1}{p{0.1\textwidth}}{Limit Cycle} & \multicolumn{1}{p{0.1\textwidth}}{Fractal Boundary} & \multicolumn{1}{p{0.1\textwidth}}{Open-Loop Unstable}\\ \hline
+% Van der Pol & \\
+% Soft-Landing & \\
+% Julia Recursion & \\
+% Double Pendulum & \\
+% Lane Keeping & \\
+% Crane Sway & \\
+% \end{tabular}
+% \caption{Features of the benchmark problems. Each benchmark problem has a feature that stresses algorithms for data-driven invariance.}
+% \end{table*}
+
+\noindent\begin{table*}[t]
+\centering
+\begin{tabular}{|r|ccccc|}
+\hline
+Benchmark & Nonlinearity & Set Geometry & Dimensionality & Equilibrium & Stability \\ \hline
+Linear System & no & convex polytope & $2$ & isolated & global exponential \\
+Soft-Landing & no & convex polytope & $2$ & on boundary & global exponential \\
+Nothing but Net & no & non-convex & $4$ & isolated  & global exponential \\
+Lunar Lander & yes & non-convex & $5$ & multiple isolated  & local exponential \\
+Pendulum & yes & convex polytope & $2$ & isolated & global asymptotic \\
+Inverted Pendulum & yes & convex polytope & $2$ & isolated & local asymptotic \\
+Double Pendulum & chaotic & non-convex & 4 & isolated & global asymptotic \\
+Julia Recursion & chaotic & fractal & $2$ & isolated & ?? \\
+Van der Pol & chaotic & convex polytope & $2$ & limit cycle & oscillatory  \\
+Duffing & chaotic & disjoint & $2$ & multiple isolated & oscillatory \\
+Lorenz Attractor & chaotic & convex polytope & $3$ & oscillations & oscillatory \\
+Kinematic Bicycle & yes & convex polytope & $2$ & isolated & local asymptotic \\
+Robot & yes & non-convex & $12$ & continuum & global asymptotic \\
+Two-Machine Power & yes & convex & $2$ & isolated & local asymptotic \\
+\hline
+    \end{tabular}
+\caption{Features of the benchmark problems. Each benchmark problem has a feature that make it effective for stress-testing data-driven algorithms for synthesizing or certifying \ac{capi} sets.}
+\label{tab:benchmarks}
+\end{table*}
+
+% ========================================================================
+\subsection{Benchmark Selection Criteria}
+
+The benchmark examples were chosen with a range of features that are potentially challenging for data-driven synthesis of certification algorithms.
+
+\emph{Nonlinear Dynamics:}
+Our benchmarks include both linear and nonlinear dynamics to evaluate performance across a spectrum of problem difficulty. 
+Several benchmarks with linear dynamics are included to isolate and study the effects of other the challenging features, enabling a clearer comparison of the challenges introduced by nonlinear dynamics versus those arising from other features. 
+The nonlinear benchmarks range from mildly nonlinear to chaotic, with several drawn from canonical examples in nonlinear systems analysis.
+
+\emph{Non-Convex Constraints:}
+Our benchmarks include a spectrum of constraint geometries, ranging from simple convex ellipsoids or polytopes to nonlinear or non-convex sets, disjoint sets, and examples where the boundary of the \ac{capi} set exhibits fractal structure. 
+In particular, nonlinear and non-convex constraints~\eqref{eq:system-constraints} can be extremely challenging even when the dynamics~\eqref{eq:system-dynamics} are linear. 
+Conversely, several nonlinear benchmarks include only simple state constraints, since their domain-of-attraction imposes an implicit nonlinear constraint.
+
+\emph{Nonstandard Equilibria:}
+Our benchmarks span a range of equilibrium structures beyond the classical setting of a single isolated equilibrium in the interior of the state constraint set. 
+In particular, we include systems with equilibria located on the boundary of the admissible set, as well as systems admitting multiple equilibria or a continuum of equilibria. Additionally, several nonlinear benchmarks feature a limit cycle or oscillatory behavior rather than an equilibrium. 
+
+\emph{Stability:}
+Since this paper focuses on positive invariance, the benchmarks must be stable for a \ac{capi} set to exist $\PI_\infty \neq \varnothing$. Nevertheless, the benchmarks span a range of stability properties, including Lyapunov, asymptotic, and exponential stability.  Moreover, stability may be either local or global. If an equilibrium is Lyapunov stable but not asymptotically stable, it may not be possible to expand an initial \ac{capi} set via backward reachability, since constraint-admissible trajectories may not reach the set. Similarly, when stability is only local, computing a \ac{capi} set $\PI$ is complicated by an additional implicit constraint: the state must remain within the region-of-attraction associated with the locally stable equilibrium.
+
+
+\emph{Dimensionality:}
+Our benchmarks span state-dimensions ranging from $2$ to $12$.
+This range is important since the well-known curse-of-dimensionality poses a  challenge for data-driven invariant set algorithms. Even in a model-based framework with linear dynamics and polytopic constraints, invariant set computations scale poorly with state dimension, becoming intractable for high-dimensional systems. This challenge is further exacerbated in a data-driven setting where densely covering the state-space can require an prohibitively amount of data. 
+
+\emph{Practicality:}
+The benchmarks include several practically motivated problems drawn from real-world control applications. The inclusion of practical benchmarks provides meaningful evaluation of the potential real-world utility of proposed algorithms.
+
+\emph{Literature Relevance:}
+Several benchmarks are included due to their historical use in the invariant set literature. The inclusion of these canonical examples enables direct and meaningful comparisons with existing literature.
+
+
+
+% =============================================================================
+\subsection{Benchmark Problems}
+
+In this section, we introduce the benchmark suite used to evaluate data-driven invariant set algorithms. A benchmark suite that exhaustively explores all combinations of the selection criteria would be prohibitively large. For example, spanning nonlinearity (linear, nonlinear, chaotic), constraint geometry (convex, non-convex, disjoint, fractal), equilibrium structure (isolated equilibria, multiple equilibria, continua, limit cycles), and stability properties (global/local exponential/asymptotic/Lyapunov stability) alone would require $288$ distinct benchmarks. This number would grow further if a range of state dimensions were also included. To keep the evaluation tractable, we instead select a smaller but representative suite of $15$ benchmarks that captures diverse and meaningful combinations of these features. Table~\ref{tab:benchmarks} summarizes the benchmarks and their features.
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Under-Damped Linear System}
+
+This benchmark has under-damped second-order linear dynamics
+\begin{align*}
+    \ddot{y}(t) + 2 \zeta \omega_n \dot{y}(t) + \omega_n^2 y(t) = 0. 
+\end{align*}
+where natural frequency $\omega_n = 5$ and damping ratio $\zeta = 0.1 < 1$. 
+In state-space, the dynamics are 
+\begin{subequations}
+\label{eq:linear}
+\begin{align}
+    \label{eq:linear-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        0 & 1 \\ -\omega_n^2 & -2 \zeta \omega_n
+    \end{bmatrix}
+    \begin{bmatrix}
+        x_1 \\ x_2 
+    \end{bmatrix}
+\end{align}
+with states $x_1(t) = y(t)$ and $x_2(t) = \dot{y}(t)$. The output $y(t)$ is subject to symmetric bounds, producing the state constraint set
+\begin{align}
+    \label{eq:linear-constraints}
+    \Xset = \big\{ x \in \reals^2 : | x_1(t) | \leq 1 \big\}.
+\end{align}
+\end{subequations}
+Since the dynamics are under-damped $\zeta < 1$, overshoot can lead to constraint violations. Thus, the \ac{capi} sets $\PI$ for this benchmark are non-trivial. 
+
+This illustrative benchmark provides a baseline metric for evaluating invariant set algorithms.
+Since the dynamics~\eqref{eq:linear-dynamics} are linear and the constraints~\eqref{eq:linear-constraints} are polytopic, the maximal \ac{capi} set $\PI_\infty$ can be computed analytically. This provides quantitative reference for assessing the conservativeness and accuracy of different algorithms. 
+Additionally, this is a canonical example used in the historic invariant set literature, enabling easier comparisons with existing approaches. 
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Soft-Landing}
+
+This practical benchmark is relevant to a wide range of real-world applications, including autonomous vehicles, elevators, spacecraft docking, and camless engines~\cite{}. 
+The soft-landing problem has double-integrator open-loop dynamics 
+\begin{align*}
+    f(x,u) = 
+    \begin{bmatrix}
+        0 & 1 \\ 0 & 0
+    \end{bmatrix}
+    \begin{bmatrix}
+        x_1 \\ x_2
+    \end{bmatrix}
+    + 
+    \begin{bmatrix}
+        0 \\ 1 
+    \end{bmatrix} u 
+\end{align*}
+where the states are position $x_1(t)$ and velocity $x_2(t)$. For this benchmark, we consider a state-feedback controller 
+\begin{align*}
+u = \kappa(x) = -k_1 x_1 - k_2 x_2
+\end{align*}
+yielding closed-loop dynamics 
+\begin{subequations}
+\label{eq:soft-landing}
+\begin{align}
+    \label{eq:soft-landing-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        0 & 1 \\ -k_1 & -k_2
+    \end{bmatrix}
+    \begin{bmatrix}
+        x_1 \\ x_2
+    \end{bmatrix}
+\end{align}
+where controller gains $k_1 = 1$ and $k_2 = 2$ were chosen to produce critically damped behavior. This is crucial since the soft-landing problem lacks a \ac{capi} set $\PI_\infty = \varnothing$ if the dynamics are under-damped. 
+
+The soft-landing problem is characterized by position-dependent constraints on velocity to ensure a smooth approach to the origin, producing the titular soft-landing. This soft-landing behavior is described by the state constraints
+\begin{align}
+    \label{eq:soft-landing-constraints}
+    \Xset = \big\{ x \in \reals^2 : -\underline{\gamma} x_1 \leq x_2 \leq -\bar{\gamma} x_1 \big\}
+\end{align}
+\end{subequations}
+where the parameters $0 < \underline{\gamma} < \bar{\gamma} < 1$ constrain the rate at which velocity $x_2(t) \geq 0$ decreases with position $x_1(t) \leq 0$. Here, we use parameters $\underline{\gamma} = 0.1$ and $\bar{\gamma} = 0.5$. 
+
+Although this benchmark involves linear dynamics~\eqref{eq:soft-landing-dynamics} with polytopic constraints~\eqref{eq:soft-landing-constraints}, it remains challenging since the unique equilibrium point $x_\infty = 0$ lies on the boundary of the constraint set $\Xset$. 
+Converging to this equilibrium $x_\infty = 0$ is the only way to satisfy the constraint indefinitely since the position constraint enforces $x_1(t) \leq 0$ while the velocity constraint requires $x_2(t) \geq 0$. 
+Consequently, removing this single point $x_\infty$ from the state constraints $\Xset \setminus \{ x_\infty\}$ means that the constrained dynamical system~\eqref{eq:soft-landing} lacks a \ac{capi} set $\PI_\infty = \varnothing$. 
+This extreme sensitivity to the inclusion of a single boundary point makes the soft-landing problem particularly challenging for numerical algorithms, as even small numerical errors can render the problem infeasible. 
+Additionally, this is a canonical example used in the historic invariant set literature, enabling easier comparisons with existing approaches. 
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Relaxed Soft-Landing}
+
+Since the standard soft-landing problem imposes such stringent constraints~\eqref{eq:soft-landing-constraints}, we also consider the relaxed variant~\cite{} which expands the state constraints around the origin
+\begin{align}
+    \label{eq:soft-landing-constraints-relaxed}
+    \Xset = \big\{ x \in \reals^2 : \underline{\gamma}( \epsilon - x_1) \leq x_2 \leq \bar{\gamma}( \epsilon - x_1) 
+    \big\}
+\end{align}
+with parameters $\underline{\gamma} = 0.1$, $\bar{\gamma} = 0.5$, and $\epsilon = 0.5$. The relaxed soft-landing constraints~\eqref{eq:soft-landing-constraints-relaxed} are constructed so that the equilibrium $x_\infty = 0$ lies in the interior of the set $x_\infty \in \mathrm{int}(\Xset)$ where $\epsilon$ dictates the size of the neighborhood around the origin. 
+
+\subsubsection{Benchmark: Cornhole}
+
+This practically motivated benchmark models the game of cornhole shown in Fig.~\ref{fig:corn}. The bean-bag motion is modeled by the double-integrator ballistic dynamics
+\begin{subequations}
+\label{eq:corn}
+\begin{align}
+    \label{eq:corn-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        0 & 0 & 1 & 0 \\
+        0 & 0 & 0 & 1 \\
+        0 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 \\
+    \end{bmatrix}
+    \begin{bmatrix}
+        x_1 \\ x_2 \\ x_3 \\ x_3
+    \end{bmatrix}
+    -
+    \begin{bmatrix}
+        0 \\ 0 \\ 0 \\ g
+    \end{bmatrix}
+\end{align}
+where $x_1$ and $x_2$ are the horizontal and vertical position of the bean-bag, respectively, and $x_3$ and $x_4$ are the corresponding velocities. The constant input is due to gravitational acceleration $g = 9.81$. 
+
+The constraints encode the geometry of the board and cornhole 
+\begin{align}
+    \label{eq:corn-constraints}
+    \Xset = \left\{ x \in \reals^4 : 
+    \begin{aligned}
+        5 x_2 - x_1 \phantom{|} &\neq 0 \text{ or } \\
+        |5 x_1 + x_2 | &\leq 7
+    \end{aligned}
+    \right\}.
+\end{align}
+\end{subequations}
+where the cornhole board is angled with a $5:1$ slope and the cornhole is centered at the origin with radius of $7$ centimeters. The constraints ensure that the bean-bag cannot pass through the board $5 x_2 - x_1 \neq 0$ unless when aligned with the cornhole $|5 x_1 + x_2 | &\leq 7$. 
+Here, the maximal \ac{capi} set $\PI_\infty$ represents all scoring shots. 
+
+% The constraints encode the geometry of the hoop
+% \begin{align}
+%     \label{eq:ball-constraints}
+%     \Xset = \left\{ x \in \reals^4 : 
+%     \begin{aligned}
+%         -0.22 \leq x_1 &\leq 0.22 \text{ when } \\
+%         -0.01 \leq x_2 &\leq 0.01 \text{ and } 
+%         x_4 \leq 0
+%     \end{aligned}
+%     \right\}
+% \end{align}
+% \end{subequations}
+% The constraint $-0.22 \leq x_1 \leq 0.22$ enforces that the horizontal position of the ball lies within the diameter of the hoop. This constraint is only applied when the ball is descending $x_4 \leq 0$ and its vertical position $x_2$ lies within the thickness of the hoop $-0.01 \leq x_2 \leq 0.01$. Here, the maximal \ac{capi} set $\PI_\infty$ represents all scoring shots. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{example-image-b}
+    \caption{Constraints for \textit{Nothing but Net} benchmark.}
+    \label{fig:corn}
+\end{figure}
+
+This practically motivated benchmark is difficult despite the linear dynamics~\eqref{eq:corn-dynamics} due to the non-convex constraints~\eqref{eq:corn-constraints}.
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Multi-Site Moon Lander}
+
+This practically motivated benchmark considers the problem of landing a spacecraft on the lunar surface. The planar open-loop dynamics of the moon lander are modeled by 
+\begin{align*}
+m \ddot{y} = u
+\end{align*}
+where the output $y \in \reals^2$ is the vertical $y_1$ and horizontal $y_2$ position of the lander and the control input $u \in \reals^2$ is the vertical $u_1$ and horizontal $u_2$ thrusts. The vertical thrust is set by proportional-derivative controller
+\begin{align*}
+    u_1 = -k_p y_1 - k_d \dot{y_1}
+\end{align*}
+where the gains $k_p = 2$ and $k_d = 1$ were tuned for critically damped closed-loop dynamics. 
+The horizontal thrust is set by the switched proportional-derivative controller
+\begin{align*}
+    u_2 = 
+    \begin{cases}
+        -k_p (y_2-r_1) - k_d \dot{y}_2 & \text{ if } | y_1 - r_a | \leq | y_1 - r_b | \\
+        -k_p (y_2-r_2) - k_d \dot{y}_2 & \text{ otherwise } 
+     \end{cases}
+\end{align*}
+where gains $k_p = 1$ and $k_d = 1$ were tuned for under-damped closed-loop dynamics. The controller switches between guiding the lander towards landing sites $r_a$ and $r_b$, depending on which is closer. 
+In addition, the dynamics include the fuel consumption
+\begin{align*}
+    \dot{z} = -\| u \|_1
+\end{align*}
+where the fuel consumption $\dot{z}$ is proportional to thrust $|u_1| + |u_2| = \| u \|_1$. 
+The closed-loop state-space dynamics are
+\begin{subequations}
+\label{eq:lander}
+\begin{align}
+    \label{eq:lander-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_3 \\ 
+        x_4 \\
+        -k_p x_1 - k_d x_2 \\
+        -k_p (x_2-r_i) - k_d x_4 \\
+        - | k_p x_1 \!-\! k_d x_2 | - | k_p (x_2\!-\!r_i) \!-\! k_d x_4 | 
+    \end{bmatrix}
+\end{align}
+where $r_i$ switches based on which landing site is closer: $| y_2 - r_a |$ or $| y_2 - r_a |$. 
+
+The constraints require that the moon lander complete the landing before running out of fuel and remains in the landing cone of one of the sites
+\begin{align}
+    \label{eq:lander}
+    \Xset = \left\{ x : 
+    \begin{aligned}
+        | x_2 - r_a | &\leq | x_1 | \vee | x_2 - r_b | \leq | x_1 | \\ 
+        0 & \leq x_5 
+    \end{aligned}
+    \right\} 
+\end{align}
+\end{subequations}
+
+This practical benchmark is challenging since it features mildly nonlinear dynamics due to the switching-logic and fuel consumption dynamics. It also features non-convex constraints due to the disjunctive constraint that the lander must land near one of the landing sites. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{example-image-b}
+    \caption{Constraints for the \textit{lunar lander} benchmark. }
+    \label{fig:lander}
+\end{figure}
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Pendulum}
+
+A pendulum has dynamics
+\begin{align*}
+    J \ddot{\theta}(t) + b \dot{\theta} + mgl \sin(\theta(t)) = 0
+\end{align*}
+where the parameters $J=1$, $b = 2 \zeta \omega_n$, and $mgl =\omega_n^2$ were chosen so that pendulum dynamics~\eqref{eq:pendulum-dynamics} reduce to the under-damped linear dynamics~\eqref{eq:linear-dynamics} under the small angle approximation $\sin\theta \approx \theta$. 
+In state-space, the dynamics are 
+\begin{subequations}
+\label{eq:pendulum}
+\begin{align}
+    \label{eq:pendulum-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_2 \\ -2\zeta \omega_n x_2 - \omega_n^2 \sin(x_1) 
+    \end{bmatrix}
+\end{align}
+with states $x_1(t) = \theta(t)$ and $x_2(t) = \dot{\theta}(t)$. 
+The pendulum angle $\theta(t)$ is subject to symmetric bounds, producing the state constraint set
+\begin{align}
+    \label{eq:pendulum-constraints}
+    \Xset = \big\{ x \in \reals^2 : | x_1(t) | \leq 1 \big\}.
+\end{align}
+\end{subequations}
+
+The pendulum is a canonical nonlinear benchmark, which is pervasive throughout the nonlinear systems analysis literature~\cite{}.
+The pendulum~\eqref{eq:pendulum} represents a incremental increase in difficulty over the under-damped second-order system~\eqref{eq:linear}, as its linearization recovers the same constrained dynamical system. 
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Inverted Pendulum}
+
+The dynamics of the inverted pendulum with linear controller are 
+\begin{subequations}
+\label{eq:inverted-pendulum}
+\begin{align}
+    \label{eq:inverted-pendulum-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_2 \\ \sin(x_1) - x_2 - k_1 x_1 - k_2 x_2
+    \end{bmatrix}
+\end{align}
+where the stabilizing controller gains $k_1 = 4.4142$ and $k_2 = 2.3163$ were selected to match~\cite{}. 
+The inverted pendulum is subject to trivial state constraints
+\begin{align}
+    \label{eq:inverted-pendulum-constraints}
+    \Xset = \reals^2.
+\end{align}
+\end{subequations}
+Despite this, the maximal \ac{capi} set $\PI_\infty$ is non-trivial $\PI_\infty \subset \Xset = \reals^2$ due to the lack of global stability. Instead, the maximal \ac{capi} set is the region-of-attraction for the nonlinear dynamics in feedback with the linear controller. 
+
+This benchmark is challenging for two main reasons: local stability and trivial constraints. 
+Since stability is only local, the maximal \ac{capi} set is determined entirely by the system dynamics~\eqref{eq:inverted-pendulum-dynamics}, rather than by any interaction between the dynamics and the constraints as in the other benchmarks.  
+Moreover, the unbounded constraints~\eqref{eq:inverted-pendulum-constraints} cannot be leveraged to initialize algorithms that iteratively trim non-invariant regions of the state space.
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Double Pendulum}
+
+The double pendulum is modeled by the Euler-Lagrange dynamics 
+\begin{align*}
+    M(\theta) \ddot{\theta} + C(\theta,\dot{\theta}) \dot{\theta} + G(\theta) = 0
+\end{align*}
+where $\theta, \dot{\theta}, \ddot{\theta} \in \reals^{2}$ are the joint positions, velocities, and accelerations, respectively. The mass matrix $M(\theta)$, Coriolis-centripetal matrix $C(\theta,\dot{\theta})$, and $G(\theta)$ torques are 
+\begin{align*}
+    M(\theta) &= 
+    \begin{bmatrix}
+        2 m \ell^2 & 2 m \ell^2 \cos(\theta_1 - \theta_2) \\
+        2 m \ell^2 \cos(\theta_1 - \theta_2)  & m \ell^2
+    \end{bmatrix} \\
+    C(\theta,\dot{\theta}) &= 
+    \begin{bmatrix}
+        0 & -m \ell^2 \sin(\theta_1 - \theta_2) \dot{\theta}_2 \\
+        m \ell^2 \sin(\theta_1 - \theta_2) \dot{\theta}_1 & 0
+    \end{bmatrix} \\
+    G(\theta) &= 
+    \begin{bmatrix}
+        m g \ell \sin(\theta_1) \\
+        m g \ell \sin(\theta_2) \\
+    \end{bmatrix}
+\end{align*}
+where $g = 9.81$ is the gravitational constant, $m=m_1=m_2$ is the mass of both links and $\ell=\ell_1=\ell_2$ is the length of both links. 
+In state-space, the dynamics are
+\begin{subequations}
+\label{eq:double-pendulum}
+\begin{align}
+\label{eq:double-pendulum-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_2 \\
+        -M(x_1)^{-1} \big( C(x_1,x_2) x_2 + G(x_1) \big)
+    \end{bmatrix}
+\end{align}
+where the state $x = (x_1,x_2)$ is comprised of the joint positions $x_1 = \theta \in \reals^{2}$ and velocities $x_2 = \dot{\theta} \in \reals^{2}$.
+
+The constraints prevent the double pendulum from striking the walls
+\begin{align}
+\label{eq:double-pendulum-constraints}
+    \Xset = \left\{ x \in \reals^4 : 
+    \begin{aligned}
+    | \ell \sin(x_1) | &\leq 1     \\
+    | \ell \sin(x_1) + \ell \sin(x_2) | &\leq 1     
+    \end{aligned}
+    \right\}
+\end{align}
+\end{subequations}
+where $\ell \sin(\theta_1)$ is the horizontal position of the first link and $\ell \sin(\theta_1) + \ell \sin(\theta_2)$ is the horizontal position of the second link.
+
+This benchmark is challenging due to both the nonlinear dynamics~\eqref{eq:double-pendulum-dynamics} and nonlinear constraints~\eqref{eq:double-pendulum-constraints}. The dynamics of the double pendulum~\eqref{eq:double-pendulum-dynamics} exhibit chaotic behavior. Although the box constraints~\eqref{eq:double-pendulum-constraints} are convex in the workspace, they are non-convex in the configurations-space. 
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Julia Recursion}
+
+The Julia recursion is a highly nonlinear and chaotic system with discrete-time dynamics 
+\begin{subequations}
+\label{eq:julia}
+\begin{align}
+    \label{eq:julia-dynamics}
+    f(x) = \begin{bmatrix}
+        x_1^2 - x_2^2 + \xi_1 \\ 
+        2 x_1 x_2 + \xi_2
+    \end{bmatrix}
+\end{align}
+where $\xi_1 = -0.7$ and $\xi_2 = 0.2$. The state is constrained to the unit-ball
+\begin{align}
+    \label{eq:julia-constraints}
+    \Xset = \big\{ x \in \reals^2 : \| x \|_2 \leq 1 \big\}
+\end{align}
+\end{subequations}
+where $\| \cdot \|_2$ is the Euclidena $2$-norm. 
+
+The Julia recursion has been previously studied in the invariant set literature~\cite{}, making it a natural benchmark for comparison with prior work. This problem is particularly challenging due to the invariant set’s non-convex, fractal boundary. In particular, the boundary has fractal-dimension greater than one, making it difficult to represent accurately as the level-set of a continuous function.
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Van der pol Oscillator}
+
+The Van~der~Pol oscillator is non-conservative, oscillating dynamical system with non-linear damping described by the dynamics 
+\begin{subequations}
+\label{eq:vanderpol}
+\begin{align}
+    \label{eq:vanderpol-dynamics}
+    f(x) = \begin{bmatrix}
+        x_2 \\ \mu(1-x_1^2) x_2 - x_1
+    \end{bmatrix}
+\end{align}
+where $\mu = 0.1$. For this benchmark, the state is constrained to box constraints
+\begin{align}
+    \label{eq:vanderpol-constraints}
+    \Xset = \big\{ x \in \reals^2 : \| x \|_\infty \leq 3 \big\}
+\end{align}
+\end{subequations}
+where $\| \cdot \|_\infty$ is the $\infty$-norm. 
+
+The Van~der~Pol oscillator is a canonical nonlinear benchmark, which is pervasive throughout the nonlinear systems analysis literature~\cite{}.
+It is particularly challenging because it does not admit an equilibrium point; instead, the system exhibits a stable limit cycle, which can complicate invariant set computation, particularly algorithms which grow the invariant set from a neighborhood of the equilibrium.
+
+% % ------------------------------------------------------------------------
+% \subsubsection{Benchmark: Reversed Van der pol Oscillator}
+
+% \todo{Include?}
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Duffing Oscillator}
+
+The undamped Duffing oscillator models oscillatory motion governed by a nonlinear spring restoring force.
+It has state-space dynamics
+\begin{subequations}
+    \label{eq:duffing}
+\begin{align}
+    \label{eq:duffing-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_2 \\
+        x_1 - x_1^3
+    \end{bmatrix}.
+\end{align}
+The dynamics have three equilbria $x_\infty$, two stable $x_\infty = (\pm1,0)$ and one unstable $x_\infty = (0,0)$. 
+
+The constraints limit the derivative $\dot{x}_1 =x_2$
+\begin{align}
+    \label{eq:duffing-constraints}
+    \Xset = \big\{ x \in \reals^2 : | x_2 | \leq 0.7 \big\}.
+\end{align}
+\end{subequations}
+
+The Duffing oscillator is a canonical nonlinear benchmark from the nonlinear systems analysis literature~\cite{}.
+Here, it is particular challenging since the tight constraints~\eqref{eq:duffing-constraints} produce a disjoint maximal \ac{capi} set $\PI_\infty$, with disjoint components centered around the two stable equilibria $x_\infty = (\pm1,0)$. 
+Additionally, these equilibria are Lyapunov stable but not asymptotically stable. As a result, the \ac{capi} set is non-contractive: trajectories do not converge into the set, which makes it difficult to expand an initial \ac{capi} set.
+
+
+% ------------------------------------------------------------------------
+\subsubsection{Benchmark: Lorenz Attractor}
+
+The Lorenz attractor has dynamics 
+\begin{subequations}
+\label{eq:lorenz}
+\begin{align}
+    \label{eq:lorenz-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        \sigma(x_2-x_1) \\ 
+        x_1 (\rho - x_3) - x_2 \\ 
+        x_1x_2 - \beta x_3
+    \end{bmatrix}
+\end{align}
+where the parameters $\sigma = 10$, $\rho = 28$, and $\beta = 8/3$ were chosen to induce chaotic behavior. For this benchmark, we use box constraints
+\begin{align}
+    \label{eq:lorenz-constraints}
+    \Xset = \left\{ x \in \reals^3 : 
+    \begin{aligned}
+        -20 \leq x_1 \leq 20 \\
+        -30 \leq x_2 \leq 30 \\
+        0 \leq x_3 \leq 50
+    \end{aligned}
+    \right\}
+\end{align}
+\end{subequations}
+
+The Lorenz attractor is another canonical nonlinear benchmark, ubiquitous in the literature~\cite{}. It combines key challenges seen in earlier examples, exhibiting a fractal structure and multiple equilibria. The Lorenz attractor exhibits chaotic, aperiodic dynamics sensitivity to initial conditions.
+Furthermore, it represents an incremental increase in state-dimension over the previous examples with $3$, rather than $2$, states. 
+
+% \subsubsection{Unicycle Lane Keeping}
+
+% \todo{To be written...}
+
+\subsubsection{Benchmark: Kinematic Bicycle Lane Keeping}
+
+The kinematic bicycle model is a standard vehicle dynamics model, making it a practically relevant benchmark. The open-loop dynamics are 
+\begin{align*}
+    f(x,u) = 
+    \begin{bmatrix}
+    v \sin(x_2 + u ) \\
+    \tfrac{v}{l} \sin(u)
+    \end{bmatrix}
+\end{align*}
+where $x_1 = y$ is the lateral position of the vehicle relative to the lane center-line, $x_2 = \psi$ is the inertia heading angle, $u$ is the steering angle relative to the longitudinal axis. 
+The parameters are the vehicle velocity $v = 20$ meters per second and distance $l=1.6$ meters from the center of mass to the rear-axle. 
+
+The steering angle $u$ is controlled by the state-feedback controller
+\begin{align*}
+    u = - k_1 x_1 - k_2 x_2
+\end{align*}
+producing closed-loop dynamics 
+\begin{subequations}
+\label{eq:bicycle}
+    \begin{align}
+    \label{eq:bicycle-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+    v \sin(x_2 - k_1 x_1 - k_2 x_2 ) \\
+    \tfrac{v}{l} \sin(- k_1 x_1 - k_2 x_2)
+    \end{bmatrix}.
+\end{align}
+where $k_1 = 0.3034$ and $k_2 = 0.6172$ were tuned using \ac{lqr} on the linearized dynamics~\cite{Kashani2024a}.
+
+The lateral position $x_1 = y$ of the vehicle is constrained to its lane, producing the state constraints 
+\begin{align}
+\label{eq:bicycle-constraints}
+    \Xset = \big\{ x \in \reals^2 : | x_1 | \leq 2 \big\}
+\end{align}
+where the lane width is $4$ meters. 
+\end{subequations}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{example-image-golden}
+    \caption{Constraints for \textit{lane keeping} benchmark.}
+    \label{fig:bicycle}
+\end{figure}
+
+This benchmark is practically relevant since the \ac{capi} set characterizes the set of initial conditions from which the autonomous vehicle remains within its lane for all future time. The problem is challenging, despite the simple lane keeping constraints~\eqref{eq:bicycle-constraints}, due to the kinematic bicycle dynamics~\eqref{eq:bicycle-dynamics}, which are nonlinear and velocity-dependent, complicating invariant set computation.
+
+\subsubsection{Benchmark: Two-Machine Power System}
+
+The two-machine electrical power system has dynamics
+\begin{subequations}
+\label{eq:power}
+    \begin{align}
+    \label{eq:power-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_2 \\ - 0.5 x_2 - \sin(x_1 + \tfrac{\pi}{3}) + \sin(\tfrac{\pi}{3}) 
+    \end{bmatrix}
+\end{align}
+where $x_1 = \Delta \theta$ is the relative phase and $x_2 = \Delta \omega$ is the relative frequency between the two electrical machines. 
+The state constraints on the two-machine electrical power system seek to keep the relative phase $x_1$ and frequency $x_2$ bounded 
+\begin{align}
+    \label{eq:power-constraints}
+    \Xset = \big\{ x \in \reals^2 : | x_1 | \leq \theta_{max}, | x_2 | \leq \omega_{max} \big\}
+\end{align}
+\end{subequations}
+where $\theta_{max} = 3$ and $| \omega_{max} | = 3$. 
+
+This practically motivated benchmark has been featured previously in the literature~\cite{}. It is challenging due to its nonlinear dynamics~\eqref{eq:power-dynamics} which are only locally stable. Thus, the maximal \ac{capi} set $\PI_\infty$ will depend on the region-of-attraction as well as the constraints~\eqref{eq:power-constraints}.
+
+\subsubsection{Benchmark: Robot with Workspace Obstacles}
+
+The robot dynamics are described by the Euler-Lagrange dynamics 
+\begin{align*}
+    M(\theta) \ddot{\theta} + C(\theta,\dot{\theta}) \dot{\theta} + G(\theta) = \tau
+\end{align*}
+where $\theta, \dot{\theta}, \ddot{\theta} \in \reals^{6}$ are the joint positions, velocities, and accelerations, respectively. $M(\theta)$ and $C(\theta,\dot{\theta})$ are the mass and Coriolis matrices, respectively, and $G(\theta)$ are the gravity torques. The joints torques $\tau$ are provided by a proportional-derivative controller
+\begin{align*}
+    \tau = - K_p \theta - K_d \theta + G(\theta)
+\end{align*}
+with gravity compensation where $K_p,K_d \succ 0 \in \reals^{n\times n}$ are proportional and derivative gains respectively. Thus, the closed-loop state-space dynamics are
+\begin{subequations}
+\label{eq:robot}
+\begin{align}
+\label{eq:robot-dynamics}
+    f(x) = 
+    \begin{bmatrix}
+        x_2 \\
+        -M(x_1)^{-1} \big( C(x_1,x_2) x_2 + K_p x_1 + K_d x_2)  
+    \end{bmatrix}
+\end{align}
+where the state $x = (x_1,x_2)$ is comprised of the joint positions $x_1 = \theta \in \reals^{n/2}$ and velocities $x_2 = \dot{\theta} \in \reals^{n/2}$.
+For this benchmark we consider a Universal Robots 5 (UR5), a model of which can be found in toolboxes such as the \textsc{matlab} robotics toolbox~\cite{}. 
+
+The constraints require the robot to avoid configurations $x_1 = \theta$ that collide with an obstacle $\mathcal{B}$ in the workspace 
+\begin{align}
+    \label{eq:robot-constraints}
+    \Xset = \big\{ x : \mathcal{R}(x_1) \cap \mathcal{B} = \varnothing \big\}.
+\end{align}
+\end{subequations}
+where $\mathcal{R}(x_1)$ describes the spatial extend of the robot in configuration $x_1 = \theta$. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{example-image-b}
+    \caption{Constraints for \textit{robot} benchmark.}
+    \label{fig:robot}
+\end{figure}
+
+This benchmark is challenging for several reasons: high-dimensionality, nonlinear dynamics, and non-convex constraints. 
+For robots with multiple joints, the 
+The Euler-Lagrange dynamics are nonlinear due to the state-dependent mass $M(\theta)$ and Coriolis $C(\theta,\dot{\theta})$ matrices. 
+The constraints are non-convex both due to the inherently non-convex collision avoidance constraints as well as the nonlinear mapping for robot configuration $x_1 = \theta$ to the spatial extent $\mathcal{R}(x_1)$ of the robot. 
+
+\subsubsection{Benchmark: Linear System with Noise}
+
+
+
+% ========================================================================
+\subsection{Benchmark Performance Metrics}
+
+The performance of the data-driven algorithms applied to the benchmark problems will be quantified using several performance metrics, defined in this section.
+
+\subsubsection{Analytic Metrics}
+
+For benchmarks with linear dynamics and polytopic constraints, the predecessor $\Pre(\PI)$ and true maximal \ac{capi} set $\PI_\infty$ can be computed analytically~\cite{}. This enables direct comparison of a candidate \ac{capi} sets $\hat{\PI}$ with the true maximal \ac{capi} set $\PI_\infty$. We define three analytic metrics for these benchmarks. 
+
+% \emph{Correctness:} 
+% We will evaluate performance in terms of incorrectness, quantified by the volume of the estimated \ac{capi} set $\hat{\PI}$ outside the maximal \ac{capi} set $\PI_\infty$
+% \begin{align}
+%     \label{eq:metric-correctness}
+%     \mathcal{J}_{\textsc{cor}}(\hat{\PI}) = 
+%     \frac{\vol\big( \hat{\PI} \setminus \PI_\infty \big)}
+%     {\vol(\PI_\infty)}
+% \end{align}
+% normalized by the volume of the maximal \ac{pi} set $\PI_\infty$.
+% This metric measures the portion $\hat{\PI} \setminus \PI_\infty$ of $\hat\PI$ incorrectly labeled as \ac{capi}. Smaller values of the metric~\eqref{eq:metric-correctness} indicate that the estimated \ac{capi} set incorrectly classifies fewer states as invariant.
+
+\emph{Constraint Admissibility:} 
+To evaluate performance, the binary \acf{ca} property is relaxed into a continuous metric that measures the proportion of states $x \in \hat{\PI}$ in the candidate \ac{ca} set $\hat{\PI}$ that satisfy the state constraints $x \in \Xset$
+\begin{subequations}
+\label{eq:metrics}
+\begin{align}
+    \label{eq:metric-admissibility}
+    \mathcal{J}_{\textsc{ca}}(\hat{\PI}) =
+    \frac{\vol( \hat{\PI} \cap \Xset )}
+    {\vol(\hat{\PI})}.
+\end{align}
+This metric takes values in $[0,1]$, quantifying the degree to which the candidate set $\hat{\PI}$ is \ac{ca}. 
+If $\mathcal{J}_{\textsc{ca}}(\hat{\PI}) < 1$ then the candidate set $\hat{\PI}$ is not \ac{ca} $\hat{\PI} \not\subseteq \Xset$ since a non-zero measure subset of $\hat{\PI}$ violates state constraints.
+Conversely, $\mathcal{J}_{\textsc{ca}}(\hat{\PI}) = 1$ indicates $\hat{\PI} \subseteq \Xset$ up to a zero-measure set. 
+
+\emph{Positive Invariance:} 
+By the definition of the predecessor operator, any state in $\hat{\PI} \setminus \Pre(\hat{\PI})$ violates the positive invariance of $\hat{\PI}$ since its successor will not remain in $\hat{\PI}$.
+Thus, we relax the binary \ac{pi} property into a continuous metric that measures the proportion of states $x \in \hat{\PI}$ in a candidate \ac{pi} set $\hat{\PI}$ that belong to its predecessor $\Pre(\hat{\PI})$
+\begin{align}
+    \label{eq:metric-invariance}
+    \mathcal{J}_{\textsc{pi}}(\hat{\PI}) = 
+    \frac{\vol( \Pre(\hat{\PI}) \cap \hat{\PI} )}
+    {\vol(\hat{\PI})}.
+\end{align}
+This metric takes values in $[0,1]$, quantifying the degree to which the candidate set $\hat{\PI}$ is \ac{pi}. 
+If $\mathcal{J}_{\textsc{pi}}(\hat{\PI}) < 1$ then $\hat{\PI} \not \subseteq \Pre(\hat{\PI})$ and therefore $\hat{\PI}$ is not \ac{pi} by the geometric condition for invariance (Theorem~\ref{thm:geometric}). Conversely, $\mathcal{J}_{\textsc{pi}}(\hat{\PI}) = 1$ indicates $\hat{\PI} \subseteq \Pre(\hat{\PI})$ up to a zero-measure. 
+
+\emph{Maximality:} 
+The maximality of a candidate \ac{capi} set $\hat{\PI}$ is measured by the proportion of the true maximal \ac{capi} set $\PI_\infty$ that it covers
+\begin{align}
+    \label{eq:metric-optimality}
+    \mathcal{J}_{\textsc{max}}(\hat{\PI}) = 
+    \frac{\vol ( \hat{\PI} \cap \PI_\infty )}
+    {\vol(\PI_\infty)}.
+\end{align}
+\end{subequations}
+This metric takes values in $[0,1]$, quantifying the extent to which $\hat{\PI}$ approximates the maximal \ac{capi} set. 
+If $\hat{\PI}$ is \ac{capi} then $\hat{\PI} \subseteq \PI_\infty$ and the metric reduces to the ratio of volumes $\vol(\hat{\PI}) / \vol(\PI_\infty)$. However, for the generic case, the metric does not reward non-\ac{capi} volume outside $\PI_\infty$. 
+Note, $\mathcal{J}_{\textsc{max}}(\hat{\PI}) = 1$ indicates that $\hat{\PI}$ covers $\PI_\infty$ up to a zero-measure set. 
+
+Additionally, for low-dimensional problems ($2$ or $3$ states), we will \textit{qualitatively} evaluate performance by plotting both the candidate $\hat{\PI}$ and true $\PI_\infty$ \ac{capi} sets to visualize correctness of the \ac{capi} properties and maximality. 
+
+\subsubsection{Approximate Metrics}
+
+For more complicated benchmarks involving nonlinear dynamics or non-convex constraints, evaluating the analytic metrics~\eqref{eq:metrics} is not possible since neither the predecessor $\Pre(\hat{\PI})$ nor the maximal \ac{capi} set $\PI_\infty$ will be available. Moreover, the volume computations required by~\eqref{eq:metrics} are intractable when $\hat{\PI}$ has complex geometry. Instead, we approximate the metrics~\eqref{eq:metrics} via simulation and Monte Carlo integration: we uniformly sample initial conditions $x_i(0) \in \hat{\PI}$ from the candidate set $\hat{\PI}$, simulate the corresponding trajectories $x(t)$ over a finite-horizon $[0,T]$, and then evaluate constraint satisfaction $x(t) \in \Xset$ and invariance $x(t) \in \hat\PI$. 
+The following metrics approximate the analytical metrics~\eqref{eq:metrics} under the practical limitations of finite sampling $N < \infty$ and finite simulation horizons $T < \infty$. 
+
+\emph{Monte-Carlo Constraint Admissibility:} 
+This metric measures the fraction of states $x_i \in \hat{\PI}$ drawn from the candidate set $\hat{\PI}$ which satisfy the state constraints 
+\begin{subequations}
+\label{eq:montecarol}
+\begin{align}
+\label{eq:montecarol-admissibility}
+\mathcal{I}_{\textsc{ca}}(\hat{\PI}) =
+\frac{1}{N} \sum_{i=1}^N \mathbf{1}\big( x_i \in \Xset \big)
+\end{align}
+where $\mathbf{1}(\cdot)$ denotes the indicator function and $N$ is the number of sampled states $x_i \in \hat{\PI}$. 
+This metric provides a Monte Carlo approximation of the analytic \ac{ca} metric~\eqref{eq:metric-admissibility}, empirically estimating the proportion of states $x \in \hat{\PI}$ that also satisfy the state constraints $x \in \Xset$. 
+When $\mathcal{I}_{\textsc{ca}}(\hat{\PI}) = 1$ it means that all states $x_i \in \hat{\PI}$ sampled from the candidate \ac{ca} set $\hat{\PI}$ satisfied state constraints $x_i \in \Xset$. 
+
+\emph{Monte-Carlo Positive Invariance:} 
+This metric measures the fraction of sampled initial conditions $x_i(0) \in \hat{\PI}$ whose trajectories $x_i(t)$ remain in the candidate set $x_i(t) \in \hat{\PI}$ throughout the simulation $\forall t \in [0,T]$
+\begin{align}
+\label{eq:montecarol-invariance}
+\mathcal{I}_{\textsc{pi}}(\hat{\PI}) =
+\frac{1}{N} \sum_{i=1}^N \mathbf{1}\Big( x_i(t) \in  \hat{\PI}, ~\forall t \in [0,T]\Big)
+\end{align}
+where $N$ is the number of initial conditions $x_i(0) \in \hat{\PI}$ uniformly sampled from $\hat{\PI}$.
+The simulations provide a Monte Carlo approximation of the predecessor: if $x_i(t)$ remains inside $\hat{\PI}$ for all $ t\in[0,T]$ then the initial condition belongs to the predecessor $x_i(0) \in \Pre(\hat{\PI})$. 
+Accordingly, the metric~\eqref{eq:montecarol-invariance} estimates the volume ratio $\vol(\Pre(\hat{\PI}) \cap \hat{\PI}) / \vol(\hat{\PI})$, converging to the analytic metric~\eqref{eq:metric-invariance} as the number of samples $N$ increase. 
+
+% \emph{Monte Carlo Positive Invariance:}
+% This metric estimates the fraction of sampled initial conditions x
+% whose trajectories remain within the candidate set 
+% \PI
+% over a finite simulation horizon t∈[0,T]:
+% \begin{align}
+% \label{eq:montecarol-invariance}
+% \mathcal{I}{\textsc{pi}}(\hat{\PI}) =
+% \frac{1}{N} \sum{i=1}^N \mathbf{1}\Big(x_i(t) \in \hat{\PI},~\forall t \in [0,T]\Big),
+% \end{align}
+% where N is the number of initial conditions sampled uniformly from 
+
+% \emph{Monte-Carlo False Positive Rate:} 
+% The \ac{fpr} measures the proportion of sampled initial conditions $x_i(0) \in \hat{\PI}$ for which the resulting trajectories $x_i(t)$ either violate the state constraints $x_i(t) \not\in \Xset$ or invariance $x_i(t) \not\in \hat{\PI}$
+% \begin{align}
+% \label{eq:metric-fpr}
+% \mathcal{J}_{\textsc{fpr}}(\hat{\PI}) =
+% \frac{1}{N} \sum_{i=1}^N \mathbf{1}\Big( \exists t \in [0,T], x_i(t) \notin (\Xset \cap \hat{\PI}) \Big)
+% \end{align}
+% where $\mathbf{1}(\cdot)$ denotes the indicator function and $N$ is the number of sampled initial conditions from $\hat{\PI}$.
+% The \ac{fpr}~\eqref{eq:metric-fpr} thus provides a Monte Carlo approximation of the correctness metric~\eqref{eq:metric-correctness}, quantifying how often the candidate \ac{capi} set $\hat{\PI}$ incorrectly certifies states $x_i(0)$ as \ac{capi} when, in fact, the corresponding trajectories $x_i(t)$ violate either the constraint admissibility or positive invariance conditions.
+
+% Since the maximal \ac{capi} set \PI is unavailable, it cannot be sampled directly. Instead, we sample initial conditions x(0)∼U(\Xset) and use finite-horizon simulations over t∈[0,T] to construct a rejection-based empirical approximation of \PI: trajectories that violate the state constraints, i.e., x\Xset for some t∈[0,T], are rejected, while the remaining samples serve as proxies for membership in \PI
+% We then measure the fraction of these constraint-admissible samples that are captured by the candidate set 
+
+
+\emph{Monte-Carlo Maximality:} 
+Since the maximal \ac{capi} set $\PI_\infty$ is unavailable, it cannot be directly sampled. Instead, we sample from $\Xset$ and use finite-horizon $[0,T]$ simulations to reject samples that are definitively outside $\PI_\infty$: if a trajectory violates the state constraints $x_i(t)\notin\Xset$ for some $t\in[0,T]$, then its initial condition $x_i(0)$ cannot belong to the maximal \ac{capi} set $\PI_\infty$. 
+The metric measures the fraction of constraint-admissible samples that are captured by the candidate set 
+\begin{align}
+\label{eq:montecarol-optimality}
+\mathcal{I}_{\textsc{opt}}(\hat{\PI}) = 
+\frac
+{\sum_{i=1}^N \mathbf{1}( x_i(t) \in \Xset~\forall t \in [0,T]) \mathbf{1}( x_i(0) \in \hat{\PI} )}
+{\sum_{i=1}^N \mathbf{1}( x_i(t) \in \Xset~\forall t \in [0,T] )}.
+\end{align}
+\end{subequations}
+where the numerator provides a Monte Carlo approximation of $\vol(\PI_\infty \cap \hat{\PI})$ and the denominator $\vol(\PI_\infty)$. 
+As the number of samples $N$ and the simulation horizon $T$ increase, the estimate~\eqref{eq:montecarol-optimality} provides an increasingly accurate approximation of the analytic maximality~\eqref{eq:metric-optimality}.
+When $\mathcal{I}_{\textsc{opt}}(\hat{\PI}) = 1$, it every sampled state that satisfied the constraints $x_i(t) \in \Xset$ throughout $\forall t \in [0,T]$ the simulation were captured by the candidate \ac{capi} set $\hat{\PI}$. 
+
+\subsubsection{Computational Metrics}
+
+In addition to the accuracy and optimality metrics, we evaluate the computational performance of the algorithms across the benchmarks.
+
+\emph{Data Requirements:} 
+We will evaluate the data-driven algorithms in terms of the size of the data-set $\Dset$ used to synthesize and/or certify the candidate \ac{capi} set $\hat{\PI}$. 
+We will report total memory usage rather than the number of data points, since different algorithms use different types of data-sets, either state–successor pairs~\eqref{eq:data-set} or trajectory datasets~\eqref{eq:data-set-trajectory}, which have substantially different storage requirements.
+
+\emph{Computation Time:} 
+We will evaluate the data-driven algorithms in terms of the time required to compute the candidate \ac{capi} set $\hat{\PI}$. 
+To ensure a fair comparison, all algorithms are executed on the same hardware under identical computational conditions.
